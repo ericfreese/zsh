@@ -2205,6 +2205,8 @@ struct histent {
 				/*   line:  as pairs of start, end  */
     int nwords;			/* Number of words in history line  */
     zlong histnum;		/* A sequential history number      */
+    HashTable extra;		/* Extra data from zshaddhistory    */
+				/*   hook. NULL if none provided    */
 };
 
 #define HIST_MAKEUNIQUE	0x00000001	/* Kill this new entry if not unique */

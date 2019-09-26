@@ -1454,6 +1454,7 @@ hend(Eprog prog)
      */
     int save = 1;
     char *hf;
+    HashTable extra;
 
     DPUTS(stophist != 2 && !(inbufflags & INP_ALIAS) && !chline,
 	  "BUG: chline is NULL in hend()");
@@ -1490,7 +1491,28 @@ hend(Eprog prog)
 
 	addlinknode(hookargs, "zshaddhistory");
 	addlinknode(hookargs, chline);
+
+	/* Stolen from makecompparams() in complete.c */
+	/* Can we use createspecialhash() ? I don't think it'll allow us to set
+	 * keys in the hook - more or less read-only */
+	Param hdpm;
+	extra = newparamtable(31, "HISTDATA");
+	if (!(hdpm = createparam("HISTDATA", PM_SPECIAL|PM_REMOVABLE|PM_SINGLE|PM_LOCAL|PM_HASHED)))
+	    hdpm = (Param) paramtab->getnode(paramtab, "HISTDATA");
+	hdpm->level = locallevel + 1;
+	hdpm->gsu.h = &nullsethash_gsu;
+	hdpm->u.hash = extra;
+
 	callhookfunc("zshaddhistory", hookargs, 1, &hookret);
+
+	HashNode hn;
+	int i;
+
+	for (i = 0; i < extra->hsize; i++) {
+	    for (hn = extra->nodes[i]; hn; hn = hn->next) {
+		fprintf(stderr, "after hook: node: '%s'\n", hn->nam);
+	    }
+	}
 
 	errflag &= ~ERRFLAG_ERROR;
 	errflag |= save_errflag;
@@ -1588,6 +1610,10 @@ hend(Eprog prog)
 	he->stim = time(NULL);
 	he->ftim = 0L;
 	he->node.flags = newflags;
+
+	/* TODO: Attach the hist data from the hook somehow to the entry */
+	if (extra && extra->hsize) {
+	    he->extra = extra;
 
 	if ((he->nwords = chwordpos/2)) {
 	    he->words = (short *)zalloc(chwordpos * sizeof(short));
